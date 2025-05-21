@@ -7,6 +7,7 @@ import { zhTW } from 'date-fns/locale'
 
 const chatStore = useChatStore()
 const newMessage = ref('')
+const isMobileMenuOpen = ref(false)
 
 const formatTime = (date: Date) => {
   return formatDistanceToNow(date, { addSuffix: true, locale: zhTW })
@@ -18,6 +19,15 @@ const sendMessage = () => {
   newMessage.value = ''
 }
 
+const toggleMobileMenu = () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+}
+
+const selectUserAndCloseMobileMenu = (userId: number) => {
+  chatStore.selectUser(userId)
+  isMobileMenuOpen.value = false
+}
+
 onMounted(() => {
   chatStore.initializeChatData()
 })
@@ -26,10 +36,24 @@ onMounted(() => {
 <template>
   <div class="container mx-auto px-4 py-6 h-[calc(100vh-4rem)]">
     <div class="flex h-full gap-4">
+      <!-- 手機版漢堡選單按鈕 -->
+      <button 
+        @click="toggleMobileMenu"
+        class="md:hidden fixed top-20 left-4 z-50 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center"
+      >
+        <Icon 
+          :icon="isMobileMenuOpen ? 'lucide:x' : 'lucide:menu'" 
+          class="text-2xl text-gray-600"
+        />
+      </button>
+
       <!-- 左側聊天列表 -->
-      <div class="w-1/3 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col">
+      <div 
+        class="fixed md:relative top-0 left-0 h-full w-3/4 md:w-1/3 bg-white shadow-lg md:shadow-sm overflow-hidden flex flex-col transition-transform duration-300 z-40"
+        :class="isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+      >
         <!-- 搜尋欄 -->
-        <div class="p-4 border-b">
+        <div class="p-4 border-b mt-16 md:mt-0">
           <div class="relative">
             <Icon icon="lucide:search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input 
@@ -45,7 +69,7 @@ onMounted(() => {
           <div 
             v-for="user in chatStore.chatUsers" 
             :key="user.id"
-            @click="chatStore.selectUser(user.id)"
+            @click="selectUserAndCloseMobileMenu(user.id)"
             class="flex items-center p-4 hover:bg-gray-50 cursor-pointer"
             :class="{ 'bg-gray-50': chatStore.selectedUserId === user.id }"
           >
@@ -124,6 +148,13 @@ onMounted(() => {
           <p>選擇一個聊天對象開始對話</p>
         </div>
       </div>
+
+      <!-- 遮罩層 -->
+      <div 
+        v-if="isMobileMenuOpen" 
+        class="fixed inset-0 bg-black/20 z-30 md:hidden"
+        @click="toggleMobileMenu"
+      ></div>
     </div>
   </div>
-</template> 
+</template>
