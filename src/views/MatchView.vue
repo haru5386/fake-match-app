@@ -30,7 +30,7 @@ const handleAnimationComplete = () => {
   <div class="container mx-auto px-4 py-6">
     <div class="max-w-md mx-auto">
       <!-- 配對卡片容器 -->
-      <div class="relative h-[560px]">
+      <div class="relative h-[calc(100vh-12rem)]">
         <template v-if="matchStore.remainingUsers.length > 0">
           <MatchCard 
             v-for="(item, index) in matchStore.remainingUsers.slice(0, 3)"

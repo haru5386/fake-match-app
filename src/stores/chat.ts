@@ -22,6 +22,7 @@ export const useChatStore = defineStore('chat', () => {
   const matchStore = useMatchStore()
   const messages = ref<Message[]>([])
   const selectedUserId = ref<number | null>(null)
+  const searchQuery = ref('')
 
   // 生成隨機訊息
   const generateRandomMessage = (senderId: number, receiverId: number): Message => {
@@ -62,9 +63,34 @@ export const useChatStore = defineStore('chat', () => {
     })
   }
 
+  // 搜尋聊天用戶和訊息
+  const searchResults = computed(() => {
+    if (!searchQuery.value.trim()) return []
+
+    const query = searchQuery.value.toLowerCase()
+    const results: { userId: number; userName: string; messages: Message[] }[] = []
+
+    matchStore.likedUsers.forEach(user => {
+      const userMessages = messages.value.filter(msg => 
+        (msg.senderId === user.id || msg.receiverId === user.id) &&
+        msg.content.toLowerCase().includes(query)
+      )
+
+      if (userMessages.length > 0 || user.name.toLowerCase().includes(query)) {
+        results.push({
+          userId: user.id,
+          userName: user.name,
+          messages: userMessages
+        })
+      }
+    })
+
+    return results
+  })
+
   // 獲取聊天用戶列表
   const chatUsers = computed(() => {
-    return matchStore.likedUsers.map(user => {
+    const users = matchStore.likedUsers.map(user => {
       const userMessages = messages.value.filter(
         msg => msg.senderId === user.id || msg.receiverId === user.id
       ).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
@@ -80,7 +106,19 @@ export const useChatStore = defineStore('chat', () => {
         lastMessageTime: lastMessage?.timestamp || new Date(),
         unreadCount
       }
-    }).sort((a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime())
+    })
+
+    if (!searchQuery.value.trim()) {
+      return users.sort((a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime())
+    }
+
+    const query = searchQuery.value.toLowerCase()
+    return users
+      .filter(user => 
+        user.name.toLowerCase().includes(query) ||
+        user.lastMessage.toLowerCase().includes(query)
+      )
+      .sort((a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime())
   })
 
   // 獲取與特定用戶的對話
@@ -124,13 +162,21 @@ export const useChatStore = defineStore('chat', () => {
     markAsRead(userId)
   }
 
+  // 設置搜尋關鍵字
+  const setSearchQuery = (query: string) => {
+    searchQuery.value = query
+  }
+
   return {
     messages,
     selectedUserId,
+    searchQuery,
     chatUsers,
+    searchResults,
     getConversation,
     sendMessage,
     selectUser,
+    setSearchQuery,
     initializeChatData
   }
 }) 

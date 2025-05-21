@@ -8,6 +8,7 @@ import { zhTW } from 'date-fns/locale'
 const chatStore = useChatStore()
 const newMessage = ref('')
 const isMobileMenuOpen = ref(false)
+const isSearching = ref(false)
 
 const formatTime = (date: Date) => {
   return formatDistanceToNow(date, { addSuffix: true, locale: zhTW })
@@ -26,6 +27,14 @@ const toggleMobileMenu = () => {
 const selectUserAndCloseMobileMenu = (userId: number) => {
   chatStore.selectUser(userId)
   isMobileMenuOpen.value = false
+  isSearching.value = false
+  chatStore.setSearchQuery('')
+}
+
+const handleSearch = (event: Event) => {
+  const query = (event.target as HTMLInputElement).value
+  chatStore.setSearchQuery(query)
+  isSearching.value = !!query
 }
 
 onMounted(() => {
@@ -39,7 +48,7 @@ onMounted(() => {
       <!-- 手機版漢堡選單按鈕 -->
       <button 
         @click="toggleMobileMenu"
-        class="md:hidden fixed top-20 left-4 z-50 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center"
+        class="md:hidden fixed top-20 right-4 z-50 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center"
       >
         <Icon 
           :icon="isMobileMenuOpen ? 'lucide:x' : 'lucide:menu'" 
@@ -58,38 +67,63 @@ onMounted(() => {
             <Icon icon="lucide:search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
-              placeholder="搜尋聊天" 
+              placeholder="搜尋聊天和訊息" 
               class="w-full pl-10 pr-4 py-2 rounded-full border border-gray-200 focus:outline-none focus:border-primary"
+              :value="chatStore.searchQuery"
+              @input="handleSearch"
             />
           </div>
         </div>
 
         <!-- 聊天列表 -->
         <div class="flex-1 overflow-y-auto">
-          <div 
-            v-for="user in chatStore.chatUsers" 
-            :key="user.id"
-            @click="selectUserAndCloseMobileMenu(user.id)"
-            class="flex items-center p-4 hover:bg-gray-50 cursor-pointer"
-            :class="{ 'bg-gray-50': chatStore.selectedUserId === user.id }"
-          >
-            <img :src="user.photo" class="w-12 h-12 rounded-full object-cover" :alt="user.name" />
-            <div class="ml-3 flex-1 min-w-0">
-              <div class="flex justify-between items-start">
-                <h3 class="font-semibold">{{ user.name }}</h3>
-                <span class="text-sm text-gray-500">{{ formatTime(user.lastMessageTime) }}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <p class="text-sm text-gray-600 truncate">{{ user.lastMessage }}</p>
-                <span 
-                  v-if="user.unreadCount" 
-                  class="ml-2 px-2 py-1 text-xs text-white bg-primary rounded-full"
-                >
-                  {{ user.unreadCount }}
-                </span>
+          <template v-if="!isSearching">
+            <div 
+              v-for="user in chatStore.chatUsers" 
+              :key="user.id"
+              @click="selectUserAndCloseMobileMenu(user.id)"
+              class="flex items-center p-4 hover:bg-gray-50 cursor-pointer"
+              :class="{ 'bg-gray-50': chatStore.selectedUserId === user.id }"
+            >
+              <img :src="user.photo" class="w-12 h-12 rounded-full object-cover" :alt="user.name" />
+              <div class="ml-3 flex-1 min-w-0">
+                <div class="flex justify-between items-start">
+                  <h3 class="font-semibold">{{ user.name }}</h3>
+                  <span class="text-sm text-gray-500">{{ formatTime(user.lastMessageTime) }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <p class="text-sm text-gray-600 truncate">{{ user.lastMessage }}</p>
+                  <span 
+                    v-if="user.unreadCount" 
+                    class="ml-2 px-2 py-1 text-xs text-white bg-primary rounded-full"
+                  >
+                    {{ user.unreadCount }}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          </template>
+
+          <!-- 搜尋結果 -->
+          <template v-else>
+            <div v-for="result in chatStore.searchResults" :key="result.userId">
+              <div 
+                @click="selectUserAndCloseMobileMenu(result.userId)"
+                class="flex items-center p-4 hover:bg-gray-50 cursor-pointer border-b"
+              >
+                <div class="w-full">
+                  <h3 class="font-semibold text-primary mb-2">{{ result.userName }}</h3>
+                  <div v-for="message in result.messages" :key="message.id" class="mb-2">
+                    <p class="text-sm text-gray-600">{{ message.content }}</p>
+                    <p class="text-xs text-gray-400">{{ formatTime(message.timestamp) }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-if="chatStore.searchResults.length === 0" class="p-4 text-center text-gray-500">
+              找不到相關訊息
+            </div>
+          </template>
         </div>
       </div>
 
